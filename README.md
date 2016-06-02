@@ -1,69 +1,95 @@
-JST - Template for JavaScript - Proposal of Jade like template engine
+JST - Template for JavaScript - Proposal of Jade like template engine (v0.2)
 
 with:
 
-1. Easy identifyable block with parentheses
-2. Easy identifyable JavaScript expressions
-3. ES2015 JavaScript expressions
-4. AngularJS 2 expression syntax compatiable
+1. Easily identifiable block with brackets,
+2. Easily identifiable JavaScript expressions with AngularJS 2 expression syntax,
+3. Easily switch between template and JavaScript expression, and
+4. Build in ES2015 support.
 
+Version 0.2:
 ```
-doctype(html) {
-	html {
-		head {
-			title {
+doctype(html)
 
+// put inner template in {} brackets.
+// if you prefer, you can still omit brackets and just use indent instead.
+html {
+	head {
+		// inline script: variables defined here are also available in the template.
+		// can be processed using plugins, e.g. babel.
+		script {
+			var href = '//github.com/amobiz/jst';
+			var title = 'Template for JavaScript - Proposal of Jade like template engine (v2)';
+
+			function onclick(e) {
 			}
-			link(href=styles.css rel=stylesheet)
-			style(href=styles.css)	// short hand for above
-			icon(href=favicon.ico)	// same as: link(href=favicon.ico rel=icon)
+		}
 
-			script(src=main.js)
-			script {
+		// use variable defined in above script section.
+		// in template, use JavaScript expressions / variables with {{expr}} syntax
+		title {{title}}
+		// put attributes in () parenthesis, omit () parenthesis when no attributes
+		link(href=styles.css rel=stylesheet)
+		style(href=styles.css)	// short hand for above
+		icon(href=favicon.ico)	// same as: link(href=favicon.ico rel=icon)
 
+		// external script
+		script(src=main.js)
+	}
+	body {
+		// directives starts with '@' character.
+		// unless there is blank space characters, '' or "" can be omitted.
+		@import header.jst
+
+		header {
+			h1 {
+				a(href={{href}} target=_blank) {{title}}
 			}
-	    }
-	    body {
-			// Directives and JavaScript expressions starts with '@' char.
-			@import base.html	// unless there is blank space chars, '' or "" can be omitted.
+		}
 
-	    	header {
-	    		h1 {
-	    			a(href={{href}} target=_blank) {{title}}
-	    		}
-	    	}
-	    	
-			// add id with '#' char; add class with '.' char; put other attributes in () parentheses, omit () parentheses when no attributes
-			section.header() {{title}}	// refer variables in template with {{var}} syntax
-				
-			// JavaScript expressions can span multiple lines
-			@var user = { 
-				description: 'foo bar baz' 
-			}
-			@var items = [{
+		// add id with '#' character; add class with '.' character;
+		section.header {{title}}
+
+		// switch to JavaScript expression with {{expr}} syntax.
+		// this can be processed using plugins, e.g. babel.
+		{{
+			var user = {
+				name: 'guest',
+				description: 'foo bar baz',
+				nested: {
+					key: {
+				}}	// this should also work without problem.
+			};
+			var items = [{
 				name: 'apple',
 				item: 3
-			}, {	
+			}, {
 				name: 'orange',
 				item: 5
-			}]
+			}];
 
-			// put inner html template in {} parentheses
-			section#content() {
-			    p.user {{user.description}}
+			var styles = {
+				color: '#333'
+			};
+		}}
 
-				ul {
-					@for (name, item in items) {
-						li(id={{name}} (click)='onclick()') {
-							{{name}}: {{item}}
-						}
+		section#content.container(style={{styles}}) {
+			h2 {{user.name}}
+			p {{user.description}}
+
+			// skip template {} bracket if the only inner item is JavaScript expression.
+			// you can think of `{{}}` as a way to switch between template and JavaScript expression.
+			ul {{	// switch to js expression.
+				for (name, item in items) {{	// switch to template expression.
+					// AngularJS 2.0 like event handler.
+					li(id={{name}} class={{item.active ? 'active' : ''}} (click)={{onclick}}) {
+						{{name}}: {{item}}
 					}
-				}
-				div {
+				}}
+			}}
+		}
 
-				}
-			}
-	    }
+		@import footer.html
 	}
 }
 ```
