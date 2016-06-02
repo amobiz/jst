@@ -4,7 +4,7 @@ with:
 
 1. Easy identifyable block with parentheses
 2. Easy identifyable JavaScript expressions
-3. ES2005 JavaScript expressions
+3. ES2015 JavaScript expressions
 4. AngularJS 2 expression syntax compatiable
 
 ```
