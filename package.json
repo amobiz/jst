@@ -1,0 +1,28 @@
+{
+  "name": "jst",
+  "version": "1.0.0",
+  "description": "JST - Template for JavaScript - Proposal of Jade like template engine (v0.2)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amobiz/jst.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/amobiz/jst/issues"
+  },
+  "homepage": "https://github.com/amobiz/jst#readme",
+  "dependencies": {
+    "lex": "^1.7.9"
+  },
+  "devDependencies": {
+    "jacob": "^1.0.5",
+    "jison": "^0.4.17",
+    "lex": "^1.7.9"
+  }
+}
