@@ -1,5 +1,25 @@
-
 %{
+
+var DEBUG = true;
+var INDENTS = '    ';
+
+var row = 0;
+var col = 0;
+var depth = 0;
+
+
+function log() {
+    if (DEBUG) {
+        var i, s = '';
+        for (i = 0; i < depth; ++i) {
+            s += INDENTS;
+        }
+        for (i = 0; i < arguments.length; ++i) {
+            s += arguments[i];
+        }
+        console.log(s);
+    }
+}
 
 function tag(name, attributes) {
     return {
@@ -15,33 +35,185 @@ function tag(name, attributes) {
 
 %lex
 
+NAME                        [a-zA-Z_][a-zA-Z0-9_-]*
+BR                          \r\n|\n|\r
+SPACE                       [ \t]
+BLANK                       \s+
+LINE_COMMENT                '//'.*
+BLOCK_COMMENT               '/*'((\*+[^/*])|([^*]))*\**'*/'
+DOUBLE_QUOTE_TEXT           \"(?:\\\"|[^"])*\"
+SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
+
+%s block
+%x tag attr trail
+
 %%
-'//'.*                          /* skip line comment */
-'/*'((\*+[^/*])|([^*]))*\**'*/' /* skip block comment */
-\s+                             /* skip space */
-'{{'(?!\{)                      return '{{';
-'}}'(?!\})                      return '}}';
-'{'                             return '{';
-'}'                             return '}';
-'('                             return '(';
-')'                             return ')';
-'#'                             return '#';
-'.'                             return '.';
-'='                             return '=';
-\w[-\w]*                        return 'identifier';
-\'(?:\\\'|[^'])*\'              return 'STRING_LITERAL';
-\"(?:\\\"|[^"])*\"              return 'STRING_LITERAL';
-<<EOF>>                         return 'EOF';
+
+//-----------------
+// common rules
+//-----------------
+
+<<EOF>>                     return 'EOF';
+\s+                         ;
+
+{LINE_COMMENT}{BR}          ;
+{BLOCK_COMMENT}             ;
+
+{NAME} {
+        log(yytext);
+        this.begin('tag');
+        return 'TAG_NAME';
+    }
+
+'#' {
+        log(yytext);
+        this.begin('tag');
+        return '#';
+    }
+
+'.' {
+        log(yytext);
+        this.begin('tag');
+        return '.';
+    }
+
+'|'{SPACE}* {
+        log('|');
+        this.begin('trail');
+        return '|';
+    }
+
+'{' {
+        log('{');
+        ++depth;
+        this.begin('block');
+        return '{';
+    }
+
+'}' {
+        --depth;
+        log(yytext);
+        return '}';
+    }
+
+{DOUBLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+{SINGLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+. {
+        log('unknown char="' + yytext + '"');
+    }
+
+//-----------------
+// tag rules
+//-----------------
+
+<tag>{NAME} {
+        log(yytext);
+        return 'ATTR_NAME';
+    }
+
+<tag>[.#] {
+        return yytext;
+    }
+
+<tag>'(' {
+        log('(');
+        this.begin('attr');
+        return '(';
+    }
+
+<tag>{SPACE}*'{'+ {
+        log('{');
+        ++depth;
+        this.begin('block');
+        return '{';
+    }
+
+<tag>{SPACE}*'|'{SPACE}* {
+        log('|');
+        this.begin('trail');
+        return '|';
+    }
+
+<tag>{SPACE}+ {
+        log('SPACE');
+        this.popState();
+        return 'SPACE';
+    }
+
+<tag>{BR} {
+        log('BR');
+        this.popState();
+        return 'EOL';
+    }
+
+//-----------------
+// attr rules
+//-----------------
+
+<attr>{BLANK} {
+    }
+
+<attr>{NAME} {
+        return 'ATTR_NAME';
+    }
+
+<attr>'=' {
+        return '=';
+    }
+
+<attr>[:!]'=' {
+        log(':=');
+        return ':=';
+    }
+
+<attr>{DOUBLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+<attr>{SINGLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+<attr>')'{SPACE}*'|'?{SPACE}* {
+        log(')');
+        this.begin('trail');
+        return ')';
+    }
+
+//-----------------
+// trail text rules
+//-----------------
+
+<trail>{BR} {
+        log('BR');
+        this.popState();
+        return 'EOL';
+    }
+
+<trail>[^\n\r]+ {
+        log(yytext);
+        return 'INNER_TEXT';
+    }
 
 /lex
 
-%start markups
+%start markup
 
 %%  /* language grammar */
 
-markups
+markup
     : elements EOF
-        { $$ = $1; console.log(JSON.stringify($$, null, '  ')); }
+        { $$ = $1; log(JSON.stringify($$, null, '  ')); }
     ;
 
 elements
@@ -57,54 +229,87 @@ element
     ;
 
 tag
-    : tag_name tag_attributes block
+    : tag_chain block
         {
-            $1.attributes = Object.assign({}, $2, $1.attributes);
-            $1.nodes = $3;
-            $$ = $1;
+            var nodes = $1, node = nodes[0];
+            $$ = node;
+            for (var i = 0; i < nodes.length; ++i) {
+                node.nodes = [nodes[i]];
+                node = nodes[i];
+            }
+            node.nodes = $2;
         }
-    | tag_name tag_attributes
+    | tag_chain '|' INNER_TEXT EOL
         {
-            $1.attributes = Object.assign({}, $2, $1.attributes);
-            $1.nodes = $2;
-            $$ = $1;
+            var nodes = $1, node = nodes[0];
+            $$ = node;
+            for (var i = 0; i < nodes.length; ++i) {
+                node.nodes = [nodes[i]];
+                node = nodes[i];
+            }
+            node.nodes = $3;
         }
-    | tag_name block
+    | tag_chain SPACE STRING_LITERAL
         {
-            $1.nodes = $2;
-            $$ = $1;
+            var nodes = $1, node = nodes[0];
+            $$ = node;
+            for (var i = 0; i < nodes.length; ++i) {
+                node.nodes = [nodes[i]];
+                node = nodes[i];
+            }
+            node.nodes = $3;
         }
+    | tag_chain EOL
+    |  '|' INNER_TEXT EOL
+        { $$ = $2; }
+    | STRING_LITERAL
     ;
 
-tag_name
-    : identifier
-        { $$ = tag($1); }
-    | identifier id_attribute
-        { $$ = tag($1, $2); }
-    | identifier id_attribute class_attributes
+tag_chain
+    : tag_chain SPACE tag_declaration
+        { $$ = $1.concat($3); }
+    | tag_declaration
+        { $$ = [$1]; }
+    ;
+
+tag_declaration
+    : tag_shorthands tag_attributes
+        {
+            $1.attributes = Object.assign({}, $2, $1.attributes);
+            $$ = $1;
+        }
+    | tag_shorthands
+    ;
+
+tag_shorthands
+    : TAG_NAME id_attribute class_attributes
         { $$ = tag($1, Object.assign($2, $3)); }
-    | identifier class_attributes
+    | TAG_NAME id_attribute
         { $$ = tag($1, $2); }
-    | id_attribute
-        { $$ = tag('div', $1); }
+    | TAG_NAME class_attributes
+        { $$ = tag($1, $2); }
+    | TAG_NAME
+        { $$ = tag($1); }
     | id_attribute class_attributes
         { $$ = tag('div', Object.assign($1, $2)); }
+    | id_attribute
+        { $$ = tag('div', $1); }
     | class_attributes
         { $$ = tag('div', $1); }
     ;
 
 id_attribute
-    : '#' identifier
+    : '#' ATTR_NAME
         { $$ = { id: $2 }; }
     ;
 
 class_attributes
-    : class_attributes '.' identifier
+    : class_attributes '.' ATTR_NAME
         {
             $1.class.push($3);
             $$ = $1;
         }
-    | '.' identifier
+    | '.' ATTR_NAME
         {
             $$ = { class: [$2] };
         }
@@ -113,7 +318,11 @@ class_attributes
 tag_attributes
     : '(' attributes ')'
         { $$ = $2; }
+    | '[' attributes ']'
+        { $$ = $2; }
     | '(' ')'
+        { $$ = {}; }
+    | '[' ']'
         { $$ = {}; }
     ;
 
@@ -126,21 +335,27 @@ attributes
     ;
 
 attribute
-    : identifier '=' attribute_value
+    : ATTR_NAME '=' attribute_value
         {
             $$ = {};
-            $$[$1] = $2;
+            $$[$1] = $3;
         }
-    | identifier
+    | ATTR_NAME ':=' attribute_value
         {
             $$ = {};
-            $$[$1] = '';
+            $$[$1] = $3;
+        }
+    | ATTR_NAME
+        {
+            $$ = {};
+            $$[$1] = "''";
         }
     ;
 
 attribute_value
-    : identifier
-    | STRING_LITERAL
+    : STRING_LITERAL
+    | identifier
+        { $$ = "'" + $1 + "'"; }
     ;
 
 block
@@ -148,14 +363,13 @@ block
         { $$ = $2; }
     | block_open block_close
         { $$ = []; }
-    | expression
-        {
-            $$ = {
-                type: 'Expression',
-                nodes: $1
-            };
-        }
     | STRING_LITERAL
+        {
+            $$ = [{
+                type: 'Text',
+                text: $1
+            }];
+        }
     ;
 
 block_open

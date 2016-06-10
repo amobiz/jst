@@ -18,7 +18,6 @@
   },
   "homepage": "https://github.com/amobiz/jst#readme",
   "dependencies": {
-    "lex": "^1.7.9"
   },
   "devDependencies": {
     "jacob": "^1.0.5",
