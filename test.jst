@@ -38,7 +38,7 @@ html {
                 */
 
                 li | inner text can lead by the `|` pipe char.
-                li "inner text can quoted by `, ' or \"."
+                li "inner text can lead by the `|` pipe char."
 
                 li {
                     | of course you can put inner text inside a block and lead by the `|` pipe char.
@@ -49,19 +49,20 @@ html {
                 li() {
                     // when # or . shorthand used inside an inline element,
                     // the implicit tag name becomes span rather then div.
-                    em .highlight  // <em><span class="highlight"></span></em>
+                    em .highlight
+                    // <em><span class="highlight"></span></em>
                 }
 
                 li {
                     h1{"title"}
                     .article{
                         "contents go "
-                        a[href='#'] | here
+                        a(href='#') | here
                     }
                 }
 
                 // sibling
-                li h1{"title"} + .article{"contents go " + a[href='#'] | here}
+                li h1{"title"} + .article{"contents go " + a(href='#') | here}
 
                 li()
             }

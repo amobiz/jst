@@ -6,7 +6,7 @@ var INDENTS = '    ';
 var row = 0;
 var col = 0;
 var depth = 0;
-
+var blocks = [];
 
 function log() {
     if (DEBUG) {
@@ -44,7 +44,7 @@ BLOCK_COMMENT               '/*'((\*+[^/*])|([^*]))*\**'*/'
 DOUBLE_QUOTE_TEXT           \"(?:\\\"|[^"])*\"
 SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
 
-%s block
+%s block expr
 %x tag attr trail
 
 %%
@@ -62,7 +62,7 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
 {NAME} {
         log(yytext);
         this.begin('tag');
-        return 'TAG_NAME';
+        return 'NAME';
     }
 
 '#' {
@@ -83,17 +83,35 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
         return '|';
     }
 
-'{' {
-        log('{');
+'{'+ {
+        log(yytext);
+        if (yyleng > 2) {
+            throw new Error('unexpected symbol: ' + yytext);
+        }
         ++depth;
-        this.begin('block');
-        return '{';
+        blocks.unshift(yyleng);
+        if (yyleng === 1) {
+            return '{';
+        }
+        this.begin('expr');
+        return '{{';
     }
 
-'}' {
+'}'{1,2} {
+        var block;
+
         --depth;
         log(yytext);
-        return '}';
+        if (yyleng < blocks[0]) {
+            throw new Error('unexpected symbol: ' + yytext);
+        }
+
+        block = blocks[0];
+        if (yyleng !== block) {
+            this.less(block);
+        }
+        blocks.shift();
+        return block === 1 ? '}' : '}}';
     }
 
 {DOUBLE_QUOTE_TEXT} {
@@ -110,13 +128,15 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
         log('unknown char="' + yytext + '"');
     }
 
-//-----------------
-// tag rules
-//-----------------
+
+//--------------------------------------------------------------------------------------------------
+// TAG rules
+// This state is a temporary state and should go back (pop) to original state, usually 'block'.
+//--------------------------------------------------------------------------------------------------
 
 <tag>{NAME} {
         log(yytext);
-        return 'ATTR_NAME';
+        return 'NAME';
     }
 
 <tag>[.#] {
@@ -129,22 +149,46 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
         return '(';
     }
 
-<tag>{SPACE}*'{'+ {
-        log('{');
+<tag>{BLANK}*'{'+ {
+        var match = yytext.trim();
+        log(match);
+        if (match.length > 2) {
+            throw new Error('unexpected symbol: ' + yytext);
+        }
+        this.popState();
         ++depth;
-        this.begin('block');
-        return '{';
+        blocks.unshift(match.length);
+        if (match.length === 1) {
+            return '{';
+        }
+        this.begin('expr');
+        return '{{';
     }
 
 <tag>{SPACE}*'|'{SPACE}* {
         log('|');
+        this.popState();
         this.begin('trail');
         return '|';
     }
 
+<tag>{SPACE}*'+'{SPACE}* {
+        log('+');
+        return '+';
+    }
+
+<tag>{DOUBLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+<tag>{SINGLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
 <tag>{SPACE}+ {
         log('SPACE');
-        this.popState();
         return 'SPACE';
     }
 
@@ -156,16 +200,18 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
 
 //-----------------
 // attr rules
+// This state is a temporary state and should go back (pop) to original state, i.e. 'tag'.
 //-----------------
 
 <attr>{BLANK} {
     }
 
 <attr>{NAME} {
-        return 'ATTR_NAME';
+        return 'NAME';
     }
 
 <attr>'=' {
+        log('=');
         return '=';
     }
 
@@ -184,9 +230,9 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
         return 'STRING_LITERAL';
     }
 
-<attr>')'{SPACE}*'|'?{SPACE}* {
+<attr>')' {
         log(')');
-        this.begin('trail');
+        this.popState();
         return ')';
     }
 
@@ -266,10 +312,15 @@ tag
     ;
 
 tag_chain
-    : tag_chain SPACE tag_declaration
+    : tag_chain SPACE tag_siblings
         { $$ = $1.concat($3); }
-    | tag_declaration
+    | tag_siblings
         { $$ = [$1]; }
+    ;
+
+tag_siblings
+    : tag_sibling '+' tag_declaration
+    | tag_declaration
     ;
 
 tag_declaration
@@ -282,13 +333,13 @@ tag_declaration
     ;
 
 tag_shorthands
-    : TAG_NAME id_attribute class_attributes
+    : NAME id_attribute class_attributes
         { $$ = tag($1, Object.assign($2, $3)); }
-    | TAG_NAME id_attribute
+    | NAME id_attribute
         { $$ = tag($1, $2); }
-    | TAG_NAME class_attributes
+    | NAME class_attributes
         { $$ = tag($1, $2); }
-    | TAG_NAME
+    | NAME
         { $$ = tag($1); }
     | id_attribute class_attributes
         { $$ = tag('div', Object.assign($1, $2)); }
@@ -299,17 +350,17 @@ tag_shorthands
     ;
 
 id_attribute
-    : '#' ATTR_NAME
+    : '#' NAME
         { $$ = { id: $2 }; }
     ;
 
 class_attributes
-    : class_attributes '.' ATTR_NAME
+    : class_attributes '.' NAME
         {
             $1.class.push($3);
             $$ = $1;
         }
-    | '.' ATTR_NAME
+    | '.' NAME
         {
             $$ = { class: [$2] };
         }
@@ -335,17 +386,17 @@ attributes
     ;
 
 attribute
-    : ATTR_NAME '=' attribute_value
+    : NAME '=' attribute_value
         {
             $$ = {};
             $$[$1] = $3;
         }
-    | ATTR_NAME ':=' attribute_value
+    | NAME ':=' attribute_value
         {
             $$ = {};
             $$[$1] = $3;
         }
-    | ATTR_NAME
+    | NAME
         {
             $$ = {};
             $$[$1] = "''";
@@ -359,25 +410,10 @@ attribute_value
     ;
 
 block
-    : block_open elements block_close
+    : '{' elements '}'
         { $$ = $2; }
-    | block_open block_close
+    | '{' '}'
         { $$ = []; }
-    | STRING_LITERAL
-        {
-            $$ = [{
-                type: 'Text',
-                text: $1
-            }];
-        }
-    ;
-
-block_open
-    : '{'
-    ;
-
-block_close
-    : '}'
     ;
 
 expression
