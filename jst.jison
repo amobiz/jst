@@ -41,8 +41,9 @@ SPACE                       [ \t]
 BLANK                       \s+
 LINE_COMMENT                '//'.*
 BLOCK_COMMENT               '/*'((\*+[^/*])|([^*]))*\**'*/'
-DOUBLE_QUOTE_TEXT           \"(?:\\\"|[^"])*\"
-SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
+DOUBLE_QUOTE_TEXT           \"(?:\\\"|[^"\r\n])*\"
+SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'\r\n])*\'
+CODE_QUOTE_TEXT             \`(?:\\\`|[^`])*\`
 
 %s block expr
 %x tag attr trail
@@ -51,6 +52,8 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
 
 //-----------------
 // common rules
+// For any line, first non-blank char must be:
+// TAG, `#`, `.`, `|`, `{`, `}`, `{{`, `}}`, `"`, `'` or "`".
 //-----------------
 
 <<EOF>>                     return 'EOF';
@@ -124,6 +127,11 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
         return 'STRING_LITERAL';
     }
 
+{CODE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
 . {
         log('unknown char="' + yytext + '"');
     }
@@ -183,6 +191,11 @@ SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'])*\'
     }
 
 <tag>{SINGLE_QUOTE_TEXT} {
+        log(yytext);
+        return 'STRING_LITERAL';
+    }
+
+<tag>{CODE_QUOTE_TEXT} {
         log(yytext);
         return 'STRING_LITERAL';
     }
@@ -275,7 +288,7 @@ element
     ;
 
 tag
-    : tag_chain block
+    : tag_chain tag_block
         {
             var nodes = $1, node = nodes[0];
             $$ = node;
@@ -324,15 +337,15 @@ tag_siblings
     ;
 
 tag_declaration
-    : tag_shorthands tag_attributes
+    : tag_name_shorthands tag_attributes
         {
             $1.attributes = Object.assign({}, $2, $1.attributes);
             $$ = $1;
         }
-    | tag_shorthands
+    | tag_name_shorthands
     ;
 
-tag_shorthands
+tag_name_shorthands
     : NAME id_attribute class_attributes
         { $$ = tag($1, Object.assign($2, $3)); }
     | NAME id_attribute
@@ -367,9 +380,9 @@ class_attributes
     ;
 
 tag_attributes
-    : '(' attributes ')'
+    : '(' tag_attribute_chain ')'
         { $$ = $2; }
-    | '[' attributes ']'
+    | '[' tag_attribute_chain ']'
         { $$ = $2; }
     | '(' ')'
         { $$ = {}; }
@@ -377,21 +390,21 @@ tag_attributes
         { $$ = {}; }
     ;
 
-attributes
-    : attributes attribute
+tag_attribute_chain
+    : tag_attribute_chain tag_attribute
         {
             $$ = Object.assign($2, $1);
         }
-    | attribute
+    | tag_attribute
     ;
 
-attribute
-    : NAME '=' attribute_value
+tag_attribute
+    : NAME '=' tag_attribute_value
         {
             $$ = {};
             $$[$1] = $3;
         }
-    | NAME ':=' attribute_value
+    | NAME ':=' tag_attribute_value
         {
             $$ = {};
             $$[$1] = $3;
@@ -403,13 +416,13 @@ attribute
         }
     ;
 
-attribute_value
+tag_attribute_value
     : STRING_LITERAL
     | identifier
         { $$ = "'" + $1 + "'"; }
     ;
 
-block
+tag_block
     : '{' elements '}'
         { $$ = $2; }
     | '{' '}'
