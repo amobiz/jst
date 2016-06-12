@@ -1,0 +1,141 @@
+doctype(html)
+
+html {
+
+head{
+    title | JST - HTML Template Engine for JavaScript
+}
+
+body
+{
+
+article {
+    h2 | Tag and Block
+
+    p | Write tag with block enclosed by `{` and `}`.
+
+    .code `
+        ul {
+            li {}
+            li {}
+        }
+    `
+
+    .rendered {
+        ul {
+            li {}
+            li {}
+        }
+    }
+
+    p | After the `{` symnbol, begins "block mode". Block can has leading spaces.
+
+    pre code.code `
+        div {}
+    `
+
+    p | Block can stick close to tag without space.
+
+    pre code.code `
+        div{}
+    `
+
+    p | Block can in next line.
+
+    pre code.code `
+        div
+        {
+        }
+    `
+
+    p | Block can left behind multiple lines of tag
+
+    pre code.code `
+        div
+
+        {
+        }
+    `
+}
+
+article {
+    h2 | Attributes
+
+}
+
+    // block can left behind multiple lines of tag
+    // for any line, first non-blank char must be TAG, #, ., {, }, {{, }}, or BR.
+    #content
+
+    {
+        // once got `{`, begins block mode
+        ul {
+
+        // when in `{}` block mode, ignore first child tag's indent, but warn if not correct.
+        // once got new tag, begins new block mode. can be either `{` block or INDENT block.
+        li
+        // if no '{' block found, assume indent block mode.
+        // and end with next same level indent of anything.
+
+            // blank lines just ignored.
+
+            // attribute set must stick close to tag without space.
+            // attribute set may span multiple lines
+            // inner text must lead by `|` char
+            li(
+                class =
+                    'hot'
+                class
+                    := 'active'
+            ) | inner text here. once there is inner text, the sequence can't have any more tag or block.
+
+            /*
+            li span | can chain elements inline, and put inner text after the `|` pipe char.
+            */
+
+            li | inner text can lead by the `|` pipe char.
+            li "inner text can lead by the `|` pipe char."
+            li { "inline block with quoted text, but not with piped text" }
+
+            li {
+                | of course you can put inner text inside a block and lead by the `|` pipe char.
+                | but must be in trail of a line,
+                | because the '|' char treat everything after it as normal text, including the '}' char.
+
+                "or use quote"
+
+                `
+                    multiple lines
+                    multiple lines
+                `
+            }
+
+
+            li() {
+                // when # or . shorthand used inside an inline element,
+                // the implicit tag name becomes span rather then div.
+                em .highlight
+                // <em><span class="highlight"></span></em>
+            }
+
+            li {
+                h1{"title"}
+                .article{
+                    "contents go "
+                    a(href='#') | here
+                }
+            }
+
+            // sibling
+            li h1{"title"} + .article{"contents go " + a(href='#') | here}
+
+            li()
+        }
+
+        ol {
+            li()
+        }
+    }
+}
+
+}
