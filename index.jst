@@ -3,32 +3,94 @@ doctype(html)
 html {
 
 head{
-    title | JST - HTML Template Engine for JavaScript
+    title | JST - HTML Template Engine with JavaScript
 }
 
+// As you can see, since we are using block, we can save unimportant indents.
+// Making code actually more readable.
 body
 {
-
 article {
-    h2 | Tag and Block
+    h2 | Getting Started
 
-    p | Write tag with block enclosed by `{` and `}`.
+    p | Write tag like this:
 
-    .code `
+    pre code.code `
+        div
+        custom
+    `
+
+    pre code.code.rendered `
+        <div></div>
+        <custom></custom>
+    `
+
+    p | Nest tag like this:
+
+    pre code.code `
         ul {
             li {}
             li {}
         }
     `
 
-    .rendered {
+    pre code.code.rendered `
+        <ul>
+            <li></li>
+            <li></li>
+        </ul>
+    `
+
+    p "See " + a(href="#block") {"Block"} + " for detail."
+
+    p | Write text like this:
+
+    pre code.code `
+        p | Text goes here in a single line.
+    `
+
+    pre code.code.rendered `
+        <p>Text goes here in a single line.</p>
+    `
+
+    p | Add attributes like this:
+
+    pre code.code `
+        a(href="#user" title="User Avatar") {
+            img(src="asset/guest.png" alt="Guest Avatar Image")
+        }
+    `
+
+    pre code.code.rendered `
+        <a href="#user" title="User Avatar">
+            <img src="asset/guest.png" alt="Guest Avatar Image">
+        </a>
+    `
+}
+
+article {
+    h2 | Tag and Block
+
+    p | Write tag with block enclosed by `{` and `}`.
+
+    pre code.code `
         ul {
             li {}
+
             li {}
         }
-    }
+    `
 
-    p | After the `{` symnbol, begins "block mode". Block can has leading spaces.
+    pre code.code.rendered `
+        <ul>
+            <li></li>
+            <li></li>
+        </ul>
+    `
+
+    p | Note: blank lines are just ignored.
+
+    p | Block can has leading spaces.
 
     pre code.code `
         div {}
@@ -56,85 +118,113 @@ article {
         {
         }
     `
+
+    p | Block can in a single line.
+
+    pre code.code `
+        div { a { img } }
+    `
+
+    pre code.code.rendered `
+        <div><a><img /></a></div>
+    `
+
+    p | In single line mode, you can omit the `{` and `}` symbol.
+
+    pre code.code `
+        div a img
+    `
+
+    pre code.code.rendered `
+        <div><a><img /></a></div>
+    `
+
+    p | Whenever there is no nesting tag, block can be omitted.
+
+    pre code.code `
+        p {
+            | As you can see.
+            br
+            | You are not forced to add unnecessary blocks.
+        }
+    `
+
+    pre code.code.rendered `
+        <p>As you can see.<br>You are not forced to add unnecessary blocks.</p>
+    `
+
+    `
+    li() {
+        // when # or . shorthand used inside an inline element,
+        // the implicit tag name becomes span rather then div.
+        em .highlight
+        // <em><span class="highlight"></span></em>
+    }
+    `
+
 }
 
 article {
     h2 | Attributes
 
+    // attribute set must stick close to tag without space.
+    // attribute set may span multiple lines
+    // inner text must lead by `|` char
+    a(
+        class =
+            'hot'
+        class
+            := 'active'
+    ) | inner text here. once there is inner text, the sequence can't have any more tag or block.
 }
 
-    // block can left behind multiple lines of tag
-    // for any line, first non-blank char must be TAG, #, ., {, }, {{, }}, or BR.
-    #content
+article {
+    h2 | Plain Text
 
-    {
-        // once got `{`, begins block mode
-        ul {
+    p {
+        | of course you can put inner text inside a block and lead by the `|` pipe char.
+        | but must be in trail of a line,
+        | because the '|' char treat everything after it as normal text, including the '}' char.
 
-        // when in `{}` block mode, ignore first child tag's indent, but warn if not correct.
-        // once got new tag, begins new block mode. can be either `{` block or INDENT block.
-        li
-        // if no '{' block found, assume indent block mode.
-        // and end with next same level indent of anything.
+        "or use quote"
 
-            // blank lines just ignored.
+        `
+        multiple lines
+        multiple lines
+        `
+    }
 
-            // attribute set must stick close to tag without space.
-            // attribute set may span multiple lines
-            // inner text must lead by `|` char
-            li(
-                class =
-                    'hot'
-                class
-                    := 'active'
-            ) | inner text here. once there is inner text, the sequence can't have any more tag or block.
+    li | inner text can lead by the `|` pipe char.
+    li "inner text can lead by the `|` pipe char."
+    li { "inline block with quoted text, but not with piped text" }
+}
 
-            /*
-            li span | can chain elements inline, and put inner text after the `|` pipe char.
-            */
+article {
+    h2 | Sibling
+}
 
-            li | inner text can lead by the `|` pipe char.
-            li "inner text can lead by the `|` pipe char."
-            li { "inline block with quoted text, but not with piped text" }
 
-            li {
-                | of course you can put inner text inside a block and lead by the `|` pipe char.
-                | but must be in trail of a line,
-                | because the '|' char treat everything after it as normal text, including the '}' char.
+    ul {
 
-                "or use quote"
+    // when in `{}` block mode, ignore first child tag's indent, but warn if not correct.
+    // once got new tag, begins new block mode. can be either `{` block or INDENT block.
+    li
+    // if no '{' block found, assume indent block mode.
+    // and end with next same level indent of anything.
 
-                `
-                    multiple lines
-                    multiple lines
-                `
+
+        li {
+            h1 | title
+            .article{
+                "contents go "
+                a(href='#') | here
             }
-
-
-            li() {
-                // when # or . shorthand used inside an inline element,
-                // the implicit tag name becomes span rather then div.
-                em .highlight
-                // <em><span class="highlight"></span></em>
-            }
-
-            li {
-                h1{"title"}
-                .article{
-                    "contents go "
-                    a(href='#') | here
-                }
-            }
-
-            // sibling
-            li h1{"title"} + .article{"contents go " + a(href='#') | here}
-
-            li()
         }
 
-        ol {
-            li()
-        }
+        // sibling
+        li h1{"title"} + .article{"contents go " + a(href='#') {"here"}}
+
+        li()
     }
 }
 
