@@ -17,9 +17,10 @@
     "url": "https://github.com/amobiz/jst/issues"
   },
   "homepage": "https://github.com/amobiz/jst#readme",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
+    "gulp": "github:gulpjs/gulp#4.0",
+    "gulp-jison": "^1.2.0",
     "jacob": "^1.0.5",
     "jison": "^0.4.17",
     "lex": "^1.7.9"
