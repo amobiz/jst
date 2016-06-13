@@ -138,6 +138,47 @@ CODE_QUOTE_LANG             \`\`\`({NAME})?(?:\\\`|[^`])*\`\`\`
         log('unknown char="' + yytext + '"');
     }
 
+//--------------------------------------------------------------------------------------------------
+// Expansion rules
+//--------------------------------------------------------------------------------------------------
+
+<expansion>{LINE_COMMENT}{EOL}  ;
+<expansion>{BLOCK_COMMENT}      ;
+<expansion>{DOUBLE_QUOTE_TEXT}  ;
+<expansion>{SINGLE_QUOTE_TEXT}  ;
+<expansion>{CODE_QUOTE_TEXT}    ;
+
+<expansion>'{'+ {
+        // After the `{` symnbol, begins "block mode".
+        log(yytext);
+        if (yyleng > 2) {
+            throw new Error('unexpected symbol: ' + yytext);
+        }
+        ++depth;
+        blocks.unshift(yyleng);
+        if (yyleng === 2) {
+            return '{{';
+        }
+    }
+
+<expansion>'}'{1,2} {
+        var block;
+
+        --depth;
+        log(yytext);
+        if (yyleng < blocks[0]) {
+            throw new Error('unexpected symbol: ' + yytext);
+        }
+
+        block = blocks[0];
+        if (yyleng !== block) {
+            this.less(block);
+        }
+        blocks.shift();
+        if (block === 2) {
+            return '}}';
+        }
+    }
 
 //--------------------------------------------------------------------------------------------------
 // TAG rules
