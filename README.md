@@ -12,7 +12,6 @@ Version 0.2:
 doctype(html)
 
 // put inner template in {} brackets.
-// if you prefer, you can still omit brackets and just use indent instead.
 html {
 	head {
 		// inline script: variables defined here are also available in the template.
