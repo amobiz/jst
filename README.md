@@ -51,7 +51,8 @@ html {
 		})(context.global);
 		*/
 
-		// inline scripts can be processed using plugins, e.g. babel.
+		// inline scripts are first treated as text with JavaScript expression interpolation,
+		// and then can be processed using plugins, e.g. babel.
 		script {
 			var href = {{ global.href }};
 			var title = {{ global.title }};
