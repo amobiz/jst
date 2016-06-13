@@ -10,10 +10,27 @@ head{
 // Making code actually more readable.
 body
 {
+
 article {
     h2 | Getting Started
 
-    p | Write tag like this:
+    p | Write tags like this:
+
+    /*
+    {{
+        var code = `
+            div
+            custom
+        `;
+
+        {{
+            pre code.code {{code}}
+
+            // this code will be processed by hook to transpile again to html.
+            pre code.code.rendered {{code}}
+        }}
+    }}
+    */
 
     pre code.code `
         div
@@ -25,7 +42,7 @@ article {
         <custom></custom>
     `
 
-    p | Nest tag like this:
+    p | Nest tags inside `{` `}` brackets:
 
     pre code.code `
         ul {
