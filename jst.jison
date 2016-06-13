@@ -36,7 +36,7 @@ function tag(name, attributes) {
 %lex
 
 NAME                        [a-zA-Z_][a-zA-Z0-9_-]*
-BR                          \r\n|\n|\r
+EOL                         \r\n|\n|\r
 SPACE                       [ \t]
 BLANK                       \s+
 LINE_COMMENT                '//'.*
@@ -44,22 +44,23 @@ BLOCK_COMMENT               '/*'((\*+[^/*])|([^*]))*\**'*/'
 DOUBLE_QUOTE_TEXT           \"(?:\\\"|[^"\r\n])*\"
 SINGLE_QUOTE_TEXT           \'(?:\\\'|[^'\r\n])*\'
 CODE_QUOTE_TEXT             \`(?:\\\`|[^`])*\`
+CODE_QUOTE_LANG             \`\`\`({NAME})?(?:\\\`|[^`])*\`\`\`
 
 %s block expr
 %x tag attr trail
 
 %%
 
-//-----------------
+//--------------------------------------------------------------------------------------------------
 // common rules
 // For any line, first non-blank char must be:
 // TAG, `#`, `.`, `|`, `{`, `}`, `{{`, `}}`, `"`, `'` or "`".
-//-----------------
+//--------------------------------------------------------------------------------------------------
 
 <<EOF>>                     return 'EOF';
 \s+                         ;
 
-{LINE_COMMENT}{BR}          ;
+{LINE_COMMENT}{EOL}         ;
 {BLOCK_COMMENT}             ;
 
 {NAME} {
@@ -87,6 +88,7 @@ CODE_QUOTE_TEXT             \`(?:\\\`|[^`])*\`
     }
 
 '{'+ {
+        // After the `{` symnbol, begins "block mode".
         log(yytext);
         if (yyleng > 2) {
             throw new Error('unexpected symbol: ' + yytext);
@@ -205,21 +207,22 @@ CODE_QUOTE_TEXT             \`(?:\\\`|[^`])*\`
         return 'SPACE';
     }
 
-<tag>{BR} {
-        log('BR');
+<tag>{EOL} {
+        log('EOL');
         this.popState();
         return 'EOL';
     }
 
-//-----------------
+//--------------------------------------------------------------------------------------------------
 // attr rules
 // This state is a temporary state and should go back (pop) to original state, i.e. 'tag'.
-//-----------------
+//--------------------------------------------------------------------------------------------------
 
 <attr>{BLANK} {
     }
 
 <attr>{NAME} {
+        log(yytext);
         return 'NAME';
     }
 
@@ -249,12 +252,12 @@ CODE_QUOTE_TEXT             \`(?:\\\`|[^`])*\`
         return ')';
     }
 
-//-----------------
+//--------------------------------------------------------------------------------------------------
 // trail text rules
-//-----------------
+//--------------------------------------------------------------------------------------------------
 
-<trail>{BR} {
-        log('BR');
+<trail>{EOL} {
+        log('EOL');
         this.popState();
         return 'EOL';
     }
@@ -308,7 +311,7 @@ tag
             }
             node.nodes = $3;
         }
-    | tag_chain SPACE STRING_LITERAL
+    | tag_chain SPACE STRING_LITERAL EOL
         {
             var nodes = $1, node = nodes[0];
             $$ = node;
@@ -319,7 +322,7 @@ tag
             node.nodes = $3;
         }
     | tag_chain EOL
-    |  '|' INNER_TEXT EOL
+    | '|' INNER_TEXT EOL
         { $$ = $2; }
     | STRING_LITERAL
     ;
@@ -332,7 +335,7 @@ tag_chain
     ;
 
 tag_siblings
-    : tag_sibling '+' tag_declaration
+    : tag_siblings '+' tag_declaration
     | tag_declaration
     ;
 
