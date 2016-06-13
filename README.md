@@ -23,6 +23,7 @@ The whole jst then parsed to AST.
 3. Generating phase
 
 Generator generates HTML from the AST.
+Apply hooks if registered.
 
 ### Sample
 
