@@ -27,7 +27,7 @@ Apply hooks if registered.
 
 ### Sample
 
-Here is a simple example, see document source [index.jst] for full examples.
+Here is a simple example, see document source [index.jst] for full examples and generated [document] for reference.
 
 ```
 doctype(html)
